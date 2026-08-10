@@ -91,7 +91,8 @@ func TestListSortAndLimit(t *testing.T) {
 	}{
 		{"default sort by id", nil, []int{1, 2, 3}},
 		{"sort id reverse", []string{"--sort", "id", "--reverse"}, []int{3, 2, 1}},
-		{"sort by priority", []string{"--sort", "priority"}, []int{1, 2, 3}},
+		{"sort by priority", []string{"--sort", "priority"}, []int{3, 2, 1}},
+		{"sort by priority reverse", []string{"--sort", "priority", "--reverse"}, []int{1, 2, 3}},
 		{"limit 2", []string{"--limit", "2"}, []int{1, 2}},
 		{"reverse + limit 1", []string{"--sort", "id", "--reverse", "--limit", "1"}, []int{3}},
 	}

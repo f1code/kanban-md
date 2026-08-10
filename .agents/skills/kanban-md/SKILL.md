@@ -231,7 +231,7 @@ All commands accept: `--json`, `--table`, `--compact` (alias `--oneline`), `--di
 
 ### Triage New Work
 
-1. `kanban-md list --compact --status backlog --sort priority -r` — review backlog
+1. `kanban-md list --compact --status backlog --sort priority` — review backlog
 2. For items to promote: `kanban-md move ID todo`
 3. For new items: `kanban-md create "TITLE" --priority P --tags T`
 4. For stale items: `kanban-md delete ID --yes`
@@ -239,7 +239,7 @@ All commands accept: `--json`, `--table`, `--compact` (alias `--oneline`), `--di
 ### Sprint Planning
 
 1. `kanban-md board --compact` — current state
-2. `kanban-md list --compact --status backlog,todo --sort priority -r` — candidates
+2. `kanban-md list --compact --status backlog,todo --sort priority` — candidates
 3. Promote selected: `kanban-md move ID todo`
 4. Assign: `kanban-md edit ID --assignee NAME`
 5. Set deadlines: `kanban-md edit ID --due YYYY-MM-DD`
@@ -344,7 +344,7 @@ kanban-md edit <ID1>,<ID2>,<ID3> --add-tag layer-3
 kanban-md move <ID1>,<ID2> todo
 
 # List with combined filters
-kanban-md list --compact --status backlog --priority high,critical --sort priority -r
+kanban-md list --compact --status backlog --priority high,critical --sort priority
 kanban-md list --compact --not-blocked --status todo   # tasks ready to start
 kanban-md list --compact --status in-progress,review   # all active/parked work
 ```

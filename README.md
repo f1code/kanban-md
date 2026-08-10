@@ -110,8 +110,8 @@ kanban-md create "Fix login bug" --status todo --priority critical
 # List all tasks
 kanban-md list
 
-# Filter and sort
-kanban-md list --status todo,in-progress --sort priority --reverse
+# Filter and sort, highest priority first
+kanban-md list --status todo,in-progress --sort priority
 
 # Move a task forward
 kanban-md move 3 in-progress
@@ -669,6 +669,9 @@ priorities:
 defaults:
   priority: normal
 ```
+
+Priority order runs from lowest to highest. `list --sort priority` shows the
+highest configured priority first by default; use `--reverse` for lowest first.
 
 ## Shell completions
 

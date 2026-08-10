@@ -55,6 +55,12 @@ func runList(cmd *cobra.Command, _ []string) error {
 	tag, _ := cmd.Flags().GetString("tag")
 	sortBy, _ := cmd.Flags().GetString("sort")
 	reverse, _ := cmd.Flags().GetBool("reverse")
+	// Configured priorities run from lowest to highest. List priority-sorted
+	// work highest-first by default, matching pick and the TUI; --reverse
+	// explicitly requests the inverse order.
+	if sortBy == "priority" {
+		reverse = !reverse
+	}
 	limit, _ := cmd.Flags().GetInt("limit")
 	blocked, _ := cmd.Flags().GetBool("blocked")
 	notBlocked, _ := cmd.Flags().GetBool("not-blocked")
