@@ -123,7 +123,7 @@ The schema therefore does not overshoot merely by being extensible. It overshoot
 ### 4.1 One optional type, backed by a configured registry
 
 - A task has zero or one type. Multi-category work remains the job of tags.
-- An empty registry means the feature is off for normal writes. Under the explicit-config recommendation, a current-version file spells this as `types: []`; older configs may omit it until migration materializes the key. New tasks stay untyped; all parent/child shapes remain allowed; `--type VALUE` should tell the user to configure the type first.
+- An empty registry means the feature is off for normal writes. Whether the separate board-configuration design requires an explicit `types: []` or accepts omission does not change the type semantics. New tasks stay untyped; all parent/child shapes remain allowed; `--type VALUE` should tell the user to configure the type first.
 - With a non-empty registry, new type values must match a configured name. Tags remain the freeform escape hatch.
 - Do not add `defaults.type` or `require_type` in v1. Creating a task without `--type` must continue to produce an untyped, permissive task even on a board that has configured types.
 - Keep the task field optional in YAML and JSON (`omitempty`) so untyped files and JSON are unchanged.
@@ -164,7 +164,9 @@ types: [epic, story, bug]
 - The types add no color and no behavioral restriction.
 - The original issue's classification/filter/group/display-slot problem is solved even without any properties.
 
-By contrast, `types: []` leaves the registry off and new tasks untyped. Omission has the same effective meaning during old-version migration, but is a missing required key in a fully materialized current-version config.
+By contrast, an empty/disabled registry leaves new tasks untyped.
+
+Interaction with a separately designed explicit-config philosophy is narrow: the top-level registry and global display defaults may be materialized, but properties inside a type definition must remain sparse. Writing absent booleans as `false` would create restrictions, while writing them as `true` would erase the distinction between explicit permission and no override. A propertyless type should therefore remain representable as only its name.
 
 The two capabilities express all minimal structural roles without encoding a hierarchy ladder:
 
@@ -313,91 +315,15 @@ Even `all children terminal -> done` is not universally correct because of paren
 
 Persisted synchronization should remain deferred until there is evidence that advisory output is insufficient and the design answers: manual override, empty parents, direct versus recursive children, archived children, claim ownership, WIP/require-claim failures, concurrency, rollback, and audit logging.
 
-## 5. Explicit generated configuration philosophy
-
-### Current behavior is partly explicit and partly implicit
-
-`NewDefault` constructs most active defaults and `init` serializes them, while version migrations fill several settings and immediately persist the migrated config. That is already close to explicit, versioned configuration.
-
-It is not fully materialized today because many fields use `omitempty`. A normal generated board can omit active values such as:
-
-- an empty `wip_limits` map (effective unlimited);
-- `tui.hide_empty_columns: false`;
-- `tui.narrow_threshold: 0` (effective automatic mode);
-- `require_claim: false` and default-show duration on individual statuses;
-- an empty board description and other optional metadata.
-
-The runtime also contains fallback behavior with different strictness:
-
-- empty TUI age thresholds silently use built-in thresholds;
-- a zero title-line value has a helper fallback, although current config validation rejects it;
-- empty claim timeout means no expiry;
-- missing WIP limits mean unlimited;
-- nil `show_duration` means show it;
-- missing optional classes can disable class behavior.
-
-As a result, reading the current YAML does not always reveal the complete active behavior. Validation catches some missing values because their Go zero value is invalid, but cannot distinguish an omitted `false`/`0` from an explicitly configured `false`/`0` for ordinary value fields.
-
-### Product fit
-
-A fully generated, inspectable board config fits kanban-md well:
-
-- it is local, file-based infrastructure whose behavior should travel with the repository;
-- humans and agents can inspect one file rather than know compiled defaults;
-- identical repositories behave consistently across machines;
-- config diffs make behavior changes during upgrades visible;
-- the existing config version/migration system already provides the right evolution mechanism.
-
-The cost is a longer first-run file and more migration churn. New users may mistake every exposed setting for something they must understand. Every new required field also needs a schema-version bump, migration, fixture, and compatibility test. Automatically materializing fields rewrites the YAML on upgrade, which can create noisy diffs and, as with current migrations, can reformat or discard hand-authored comments.
-
-Portability improves across machines but becomes deliberately versioned across binaries: a newer migrated config remains rejected by an older binary. That is already the current safety behavior and should be documented as a one-way schema upgrade.
-
-### Pragmatic recommendation
-
-Adopt **explicit generated active settings**, not a rule that every optional object property must always appear.
-
-1. `init` should materialize every board-level setting with one active value, including false/zero/empty values whose semantics matter. For the type feature that means at least `types: []`, `display.compact_fields: [status, priority]`, and `display.tui_card_fields: [priority]`.
-2. A config declaring the current schema version should fail when a required active setting is absent. Do not silently reconstruct it from compiled defaults.
-3. An older schema version should continue to load through migrations. Each migration supplies and persists the new active setting, so old boards upgrade rather than break.
-4. Optional metadata and sparse overrides remain optional. An empty description, absent type color, and omitted type policy are not missing required settings; their absence is their documented value.
-5. Runtime default constants remain useful for `init`, migrations, programmatic tests, and recovery messages, but should not silently fill missing required keys in a current-version file.
-6. Add a future `config normalize`/materialize operation only if users need to convert hand-written current configs; do not auto-rewrite a valid current-version config on every load.
-
-This requires presence-aware validation. Removing `omitempty` affects generated output but is not enough: ordinary Go `bool` and `int` fields cannot distinguish missing from explicit `false` or `0`. Validation would need either optional/pointer decode fields, custom unmarshal presence tracking, or a raw YAML key-presence pass keyed by schema version before decoding into runtime values.
-
-The required/optional boundary should be semantic:
-
-| Kind of setting | Generated? | Missing in current version | Example |
-|---|---|---|---|
-| Board-level active behavior | Yes | Validation error | status list, claim timeout, TUI hide-empty value, display field lists |
-| Explicit empty feature registry | Yes | Validation error if the schema requires the key | `types: []`, `wip_limits: {}` |
-| Optional descriptive metadata | Only when set, or explicit empty if desired for discoverability | No behavior error | board description |
-| Sparse per-type metadata/policy | Only when set | Means no override/restriction | color, `may_be_child`, `may_have_children` |
-
-There is a real tension between inspectability and sparse type semantics. Materializing every type boolean as `false` would accidentally restrict every propertyless type; materializing every boolean as `true` would erase the distinction between explicit permission and no override. The correct explicit representation of a propertyless type is therefore just its name. The top-level registry and global display defaults are materialized; the type object's omissions are documented first-class values.
-
-For discoverability, a generated config can include a concise commented example or README link showing optional type properties. The active instance should not be padded with every possible `null` override merely to advertise the schema.
-
-### Upgrade and compatibility rules under this philosophy
-
-- Adding a new required board-level setting bumps the config version and its migration writes the chosen value.
-- Adding a new optional sparse property may still require the repository's mandated version bump, but migration must leave it absent rather than invent an override.
-- Same-version missing required keys fail with a message naming the key and explaining how to restore or migrate it.
-- Old version fixtures prove migrations materialize all required active settings.
-- An init-config golden test proves new boards expose the complete active configuration.
-- A sparse-type round-trip test proves omission, explicit true, and explicit false remain distinct.
-
-Plain-language recommendation: make new and migrated boards self-describing at the board-setting level, but treat "not specified" as a legitimate, visible-in-documentation value for optional type properties. That preserves reproducibility without turning an extensible type object into a wall of misleading defaults.
-
-## 6. Compatibility and migration
+## 5. Compatibility and migration
 
 This feature changes config schema and therefore must follow the repository's compatibility process even though task frontmatter is additive:
 
 1. Bump `CurrentVersion` from 11 to 12.
-2. Add the v11-to-v12 migration. It should materialize `types: []` and the two current display field lists, then increment the version.
-3. Add `internal/config/testdata/compat/v11/` and a compat test proving the migrated config has an explicit empty type registry and explicit unchanged display defaults.
+2. Add the v11-to-v12 migration. It should establish an empty type registry and unchanged display defaults according to the separately chosen board-config serialization policy, then increment the version.
+3. Add `internal/config/testdata/compat/v11/` and a compat test proving the migrated config has no active type registry and preserves current display behavior.
 4. Add an optional task `type` fixture and task compat assertion without renaming/removing existing YAML fields.
-5. Keep sparse properties inside each type omitted unless explicitly used, while materializing the top-level registry and active global display settings.
+5. Keep sparse properties inside each type absent unless explicitly used; do not invent restrictions during migration.
 6. Do not rewrite task files or convert tags automatically.
 7. Document a dry-run backfill recipe. Copy a recognized tag into `type` first; do not remove the tag automatically. Users can remove the old tag after reviewing results.
 
@@ -412,11 +338,11 @@ Sparse-schema compatibility tests should additionally prove:
 Exact-output compatibility needs explicit tests:
 
 - untyped default `list --compact` remains byte-for-byte `#ID [status/priority] ...`;
-- current TUI golden files remain unchanged with the explicitly generated/migrated default display values;
+- current TUI golden files remain unchanged with the migrated default display behavior;
 - old JSON for an untyped task does not gain a non-empty or mandatory field;
 - table output for a board with no types does not gain a blank TYPE column.
 
-## 7. Meaningful decisions still open
+## 6. Meaningful decisions still open
 
 The following should be confirmed before implementation:
 
@@ -440,11 +366,8 @@ The following should be confirmed before implementation:
 18. **Type-specific child display:** should `epic` be the only type that shows progress? Recommendation: no. Child discovery/progress is relation-driven for typed and untyped tasks; a later type option may override only its presentation.
 19. **Progress shape:** count, direct-child list, or recursive tree? Recommendation: issue #11's direct children plus terminal/total count; no recursive tree in the type feature.
 20. **Status inference:** computed hint or persisted automation? Recommendation: keep status manual in v1; if demand appears, trial an opt-in advisory `all_direct_children_terminal` suggestion before considering writes.
-21. **Explicit-config boundary:** should all board-level active settings be present? Recommendation: yes for new/current-version configs; optional object overrides remain sparse.
-22. **Missing current-version keys:** fallback or error? Recommendation: error for required active keys, with migrations supplying them only for older schema versions.
-23. **Discoverability for sparse properties:** materialize null/default values or document them? Recommendation: keep instances sparse and provide a concise commented example/reference; do not turn omission into an artificial value.
 
-## 8. What to defer
+## 7. What to defer
 
 - Status derivation or cascades from child progress.
 - Type-specific statuses, WIP limits, claim requirements, pick priority, assignee rules, or agent routing.
@@ -461,7 +384,7 @@ The following should be confirmed before implementation:
 - Arbitrary card templates or unbounded display field lists.
 - A full board-policy repair tool. A read-only audit is the appropriate first follow-up.
 
-## 9. Recommended staged path
+## 8. Recommended staged path
 
 1. **Schema and visibility:** add the optional task field, object registry with scalar shorthand, color, set/clear/filter/group/sort, JSON, and opt-in compact/TUI badge fields. No derived data and no behavior constraints yet. Untyped output remains exact.
 2. **Bounded hierarchy guardrails:** add sparse `may_be_child` and `may_have_children` properties. Omitted means no restriction; explicit `false` activates prospective validation. This can be a second PR in the same feature release so schema/display review is separable from mutation policy review.
@@ -470,7 +393,7 @@ The following should be confirmed before implementation:
 5. **Advisory status experiments:** if requested, expose a non-writing suggestion for an explicitly configured rule such as all direct children terminal. Measure whether it helps before designing intermediate-status rules.
 6. **Persisted status inference:** no commitment. Treat as a separate workflow-automation feature requiring its own concurrency, claim, WIP, rollback, and override design.
 
-## 10. Minimal acceptance-test and demo plan
+## 9. Minimal acceptance-test and demo plan
 
 Use a realistic board whose priority is intentionally constant so type provides visible value:
 
@@ -504,8 +427,6 @@ Create sample data:
 ### Demo checks
 
 - Default board fixture with no `types` produces exactly today's compact/table/TUI output and allows arbitrary parent shapes.
-- A newly initialized board's config golden materializes every required board-level active value, including false/zero/empty feature settings.
-- Removing a required key from a current-version fixture fails with a precise error; the equivalent older-version fixture migrates and persists that key.
 - A propertyless `types: [milestone, epic, story, bug]` registry rejects unknown new type names, preserves its order, and still allows every parent/child shape.
 - Omitted, explicit-true, and explicit-false hierarchy properties exercise their three distinct raw states; only false blocks the relevant mutation in v1.
 - The configured sample shows `[status/type]` in compact output, colored type tokens in human/TUI views, and no ANSI in compact/JSON.
