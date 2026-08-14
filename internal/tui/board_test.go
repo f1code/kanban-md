@@ -421,6 +421,43 @@ func TestBoard_HelpShowsEscAsQuit(t *testing.T) {
 	}
 }
 
+func TestBoard_ExternalEditorShortcut(t *testing.T) {
+	t.Setenv("VISUAL", "hx")
+	t.Setenv("EDITOR", "vim")
+	b, _ := setupTestBoard(t)
+
+	m, cmd := b.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
+	if cmd == nil {
+		t.Fatal("expected E to return an external editor command")
+	}
+	if containsStr(m.(*tui.Board).View(), "Edit task #1") {
+		t.Fatal("expected E to keep the built-in edit dialog closed")
+	}
+}
+
+func TestBoard_ExternalEditorShortcutRequiresEditor(t *testing.T) {
+	t.Setenv("VISUAL", "")
+	t.Setenv("EDITOR", "")
+	b, _ := setupTestBoard(t)
+
+	m, cmd := b.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
+	if cmd != nil {
+		t.Fatal("expected no command when VISUAL and EDITOR are unset")
+	}
+	if !containsStr(m.(*tui.Board).View(), "$VISUAL or $EDITOR") {
+		t.Fatal("expected missing editor error in the board view")
+	}
+}
+
+func TestBoard_HelpShowsExternalEditorShortcut(t *testing.T) {
+	b, _ := setupTestBoard(t)
+
+	b = sendKey(b, "?")
+	if !containsStr(b.View(), "Open selected task in $VISUAL or $EDITOR") {
+		t.Fatal("expected help view to describe the external editor shortcut")
+	}
+}
+
 func TestBoard_StatusBarShowsQuit(t *testing.T) {
 	b, _ := setupTestBoard(t)
 

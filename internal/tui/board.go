@@ -236,6 +236,14 @@ func (b *Board) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		b.invalidatePointerState()
 		b.err = msg.err
 		return b, nil
+	case externalEditorFinishedMsg:
+		b.invalidatePointerState()
+		b.loadTasks()
+		b.selectTaskByID(msg.taskID)
+		if msg.err != nil {
+			b.err = fmt.Errorf("external editor: %w", msg.err)
+		}
+		return b, nil
 	}
 	return b, nil
 }
@@ -340,6 +348,8 @@ func (b *Board) handleBoardActionKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		b.handleCreateStart()
 	case "e":
 		b.handleEditStart()
+	case "E":
+		return b.openSelectedTaskInExternalEditor()
 	case "d":
 		b.handleDeleteStart()
 	case "r":
@@ -2527,6 +2537,7 @@ func (b *Board) viewHelp() string {
 		{"enter", "Show task detail"},
 		{"c", "Create new task in column"},
 		{"e", "Edit selected task (same flow as create)"},
+		{"E", "Open selected task in $VISUAL or $EDITOR"},
 		{"m", "Move task (status picker)"},
 		{"n", "Move task to next status"},
 		{"p", "Move task to previous status"},
