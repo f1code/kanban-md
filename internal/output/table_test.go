@@ -376,6 +376,28 @@ func TestTaskDetailCompleted(t *testing.T) {
 	}
 }
 
+func TestTaskDetailWithChildren(t *testing.T) {
+	disableColorForTest(t)
+	parentID := 9
+	tk := &task.Task{ID: 1, Title: "Parent", Status: "in-progress", Priority: "high", Parent: &parentID}
+	children := board.ChildSummary{
+		Children: []board.ChildTask{
+			{ID: 2, Title: "Active child", Status: "todo"},
+			{ID: 3, Title: "Done child", Status: "done"},
+		},
+		Done: 1,
+	}
+
+	var buf strings.Builder
+	TaskDetailWithChildren(&buf, tk, children)
+	out := buf.String()
+	for _, want := range []string{"Parent:      #9", "Children (1/2 done)", "#2 [todo] Active child", "#3 [done] Done child"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("task detail missing %q:\n%s", want, out)
+		}
+	}
+}
+
 func TestOverviewTable(t *testing.T) {
 	disableColorForTest(t)
 

@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/antopolskiy/kanban-md/internal/board"
 	"github.com/antopolskiy/kanban-md/internal/output"
 	"github.com/antopolskiy/kanban-md/internal/task"
 )
@@ -19,10 +20,11 @@ var showCmd = &cobra.Command{
 }
 
 func init() {
+	showCmd.Flags().Bool("archived", false, "include archived child tasks")
 	rootCmd.AddCommand(showCmd)
 }
 
-func runShow(_ *cobra.Command, args []string) error {
+func runShow(cmd *cobra.Command, args []string) error {
 	id, err := strconv.Atoi(args[0])
 	if err != nil {
 		return task.ValidateTaskID(args[0])
@@ -43,7 +45,34 @@ func runShow(_ *cobra.Command, args []string) error {
 		return err
 	}
 
-	return outputTaskDetail(t)
+	allTasks, warnings, err := task.ReadAllLenient(cfg.TasksPath())
+	if err != nil {
+		return err
+	}
+	printWarnings(warnings)
+
+	includeArchived, _ := cmd.Flags().GetBool("archived")
+	children := board.SummarizeChildren(allTasks, t.ID, cfg, includeArchived)
+	return outputShownTaskDetail(t, children)
+}
+
+type shownTaskDetail struct {
+	*task.Task
+	Children []board.ChildTask `json:"children"`
+}
+
+func outputShownTaskDetail(t *task.Task, children board.ChildSummary) error {
+	format := outputFormat()
+	if format == output.FormatJSON {
+		return output.JSON(os.Stdout, shownTaskDetail{Task: t, Children: children.Children})
+	}
+	if format == output.FormatCompact {
+		output.TaskDetailCompactWithChildren(os.Stdout, t, children)
+		return nil
+	}
+
+	output.TaskDetailWithChildren(os.Stdout, t, children)
+	return nil
 }
 
 func outputTaskDetail(t *task.Task) error {

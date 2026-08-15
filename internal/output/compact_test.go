@@ -190,6 +190,23 @@ func TestTaskDetailCompactWithBody(t *testing.T) {
 	}
 }
 
+func TestTaskDetailCompactWithChildrenRollup(t *testing.T) {
+	tk := &task.Task{ID: 1, Title: "Parent", Status: "in-progress", Priority: "high"}
+	children := board.ChildSummary{
+		Children: []board.ChildTask{
+			{ID: 2, Title: "Active", Status: "todo"},
+			{ID: 3, Title: "Complete", Status: "done"},
+		},
+		Done: 1,
+	}
+
+	var buf strings.Builder
+	TaskDetailCompactWithChildren(&buf, tk, children)
+	if !strings.Contains(buf.String(), "children:1/2 done") {
+		t.Fatalf("compact child roll-up missing:\n%s", buf.String())
+	}
+}
+
 func TestOverviewCompact(t *testing.T) {
 	overview := board.Overview{
 		BoardName:  "Test Board",

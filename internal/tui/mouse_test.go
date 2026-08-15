@@ -26,16 +26,17 @@ func newMouseTestBoard() *Board {
 		{ID: 4, Title: "Task D", Status: "done", Priority: "low", Updated: mouseTestTime},
 	}
 	b := &Board{
-		cfg:          cfg,
-		tasks:        tasks,
-		columns:      columnsForTasks(cfg.BoardStatuses(), tasks),
-		width:        120,
-		height:       40,
-		now:          func() time.Time { return mouseTestTime.Add(time.Hour) },
-		mouseNow:     func() time.Time { return mouseTestTime },
-		mouseEnabled: true,
-		sortField:    "priority",
-		sortReverse:  true,
+		cfg:             cfg,
+		tasks:           tasks,
+		unfilteredTasks: tasks,
+		columns:         columnsForTasks(cfg.BoardStatuses(), tasks),
+		width:           120,
+		height:          40,
+		now:             func() time.Time { return mouseTestTime.Add(time.Hour) },
+		mouseNow:        func() time.Time { return mouseTestTime },
+		mouseEnabled:    true,
+		sortField:       "priority",
+		sortReverse:     true,
 	}
 	_ = b.View()
 	return b
@@ -238,7 +239,7 @@ func TestMouseWheelScrollsDetailThreeLinesAndClamps(t *testing.T) {
 			X: 10, Y: 10, Button: tea.MouseButtonWheelDown, Action: tea.MouseActionPress,
 		})
 	}
-	maxOff := len(detailLines(b.detailTask, b.width)) - (b.height - 2)
+	maxOff := len(b.detailLines(b.detailTask)) - (b.height - 2)
 	if b.detailScrollOff != maxOff {
 		t.Fatalf("detail bottom offset=%d, want %d", b.detailScrollOff, maxOff)
 	}
@@ -250,6 +251,34 @@ func TestMouseWheelScrollsDetailThreeLinesAndClamps(t *testing.T) {
 	}
 	if b.detailScrollOff != 0 {
 		t.Fatalf("detail top offset=%d, want 0", b.detailScrollOff)
+	}
+}
+
+func TestMouseWheelDetailClampIncludesChildren(t *testing.T) {
+	b := newMouseTestBoard()
+	b.height = 12
+	parent := b.tasks[0]
+	for id := 10; id < 30; id++ {
+		parentID := parent.ID
+		b.unfilteredTasks = append(b.unfilteredTasks, &task.Task{
+			ID: id, Title: fmt.Sprintf("Child %d", id), Status: "todo", Parent: &parentID,
+		})
+	}
+	b.detailTask = parent
+	b.view = viewDetail
+	_ = b.View()
+
+	for range 100 {
+		_, _ = b.Update(tea.MouseMsg{
+			X: 10, Y: 5, Button: tea.MouseButtonWheelDown, Action: tea.MouseActionPress,
+		})
+	}
+	want := len(b.detailLines(parent)) - (b.height - detailChrome)
+	if b.detailScrollOff != want {
+		t.Fatalf("detail bottom offset=%d, want %d with children", b.detailScrollOff, want)
+	}
+	if got := b.View(); !strings.Contains(got, "Child 29") {
+		t.Fatalf("bottom child not visible at clamped offset:\n%s", got)
 	}
 }
 

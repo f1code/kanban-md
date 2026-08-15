@@ -273,11 +273,25 @@ kanban-md list [FLAGS]
 
 ### `show`
 
-Show full details of a task.
+Show full details of a task. When the task has direct children, the detail view
+includes their IDs, statuses, titles, and a terminal/total roll-up. Parent
+status remains independently managed; the roll-up is informational only.
 
 ```bash
 kanban-md show ID
+kanban-md show ID --archived  # include archived children in the roll-up
 ```
+
+| Flag | Description |
+|------|-------------|
+| `--archived` | Include archived direct children (hidden by default) |
+
+Children are ordered by task ID, matching the default `list --parent` order.
+JSON output always contains a `children` array; compact output adds a
+`children:DONE/TOTAL done` annotation only when children are present.
+
+A representative board for trying the CLI and TUI behavior is available in
+[`examples/issue-11-demo`](examples/issue-11-demo/README.md).
 
 ### `edit`
 
@@ -523,6 +537,11 @@ Set `tui.hide_empty_columns` in `config.yml` to control the default behavior.
 > **Note:** Older releases shipped a standalone `kanban-md-tui` binary. It has been retired — use `kanban-md tui` instead.
 
 In create/edit dialogs, text fields support cursor-based editing (`←/→`, `Home/End`, `Backspace`, `Delete`).
+
+Opening a task with direct children shows the same child list and roll-up as
+`show`. Archived children remain hidden in the TUI. A board search controls
+which cards are visible, but does not hide children from the selected parent's
+detail view.
 
 Task bodies are rendered as Markdown using a palette that adapts to the
 terminal background, keeping the main text readable on both light and dark

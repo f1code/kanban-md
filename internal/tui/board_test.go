@@ -1228,6 +1228,76 @@ func TestBoard_DetailShowsAllMetadata(t *testing.T) {
 	}
 }
 
+func setupParentChildrenBoard(t *testing.T) *tui.Board {
+	t.Helper()
+
+	dir := t.TempDir()
+	kanbanDir := filepath.Join(dir, "kanban")
+	tasksDir := filepath.Join(kanbanDir, "tasks")
+	if err := os.MkdirAll(tasksDir, 0o750); err != nil {
+		t.Fatalf("creating dirs: %v", err)
+	}
+
+	cfg := config.NewDefault("Parent Children Board")
+	cfg.SetDir(kanbanDir)
+	if err := cfg.Save(); err != nil {
+		t.Fatalf("saving config: %v", err)
+	}
+
+	parentID := 1
+	childID := 2
+	tasks := []*task.Task{
+		{ID: 1, Title: "Epic Alpha", Status: "backlog", Priority: "critical", Updated: testRefTime},
+		{ID: 3, Title: "Done child", Status: "done", Priority: "medium", Parent: &parentID, Updated: testRefTime},
+		{ID: 2, Title: "Backlog child", Status: "backlog", Priority: "low", Parent: &parentID, Updated: testRefTime},
+		{ID: 4, Title: "Archived child", Status: "archived", Priority: "medium", Parent: &parentID, Updated: testRefTime},
+		{ID: 5, Title: "Grandchild", Status: "todo", Priority: "medium", Parent: &childID, Updated: testRefTime},
+	}
+	for _, tk := range tasks {
+		path := filepath.Join(tasksDir, task.GenerateFilename(tk.ID, tk.Title))
+		if err := task.Write(path, tk); err != nil {
+			t.Fatalf("writing task: %v", err)
+		}
+	}
+
+	b := tui.NewBoard(cfg)
+	b.SetNow(testNow)
+	b.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
+	return b
+}
+
+func TestBoard_DetailShowsDirectActiveChildrenAndRollup(t *testing.T) {
+	b := setupParentChildrenBoard(t)
+	b = sendKey(b, "enter")
+	v := b.View()
+
+	for _, want := range []string{"Children (1/2 done)", "#2 [backlog] Backlog child", "#3 [done] Done child"} {
+		if !containsStr(v, want) {
+			t.Errorf("detail view missing %q:\n%s", want, v)
+		}
+	}
+	for _, unwanted := range []string{"Archived child", "Grandchild"} {
+		if containsStr(v, unwanted) {
+			t.Errorf("detail view should not contain %q:\n%s", unwanted, v)
+		}
+	}
+}
+
+func TestBoard_DetailChildrenIgnoreActiveSearchFilter(t *testing.T) {
+	b := setupParentChildrenBoard(t)
+	b = sendKey(b, "/")
+	for _, r := range "Epic Alpha" {
+		b = sendKey(b, string(r))
+	}
+	b = sendSpecialKey(b, tea.KeyEnter) // keep the search filter
+	b = sendSpecialKey(b, tea.KeyEnter) // open the matching parent
+	v := b.View()
+
+	if !containsStr(v, "Backlog child") || !containsStr(v, "Done child") {
+		t.Errorf("detail children should not be hidden by the board search filter:\n%s", v)
+	}
+}
+
 func TestBoard_DetailScrollUp(t *testing.T) {
 	b, cfg := setupTestBoard(t)
 	addLongBodyToTask(t, cfg, 1, 50)

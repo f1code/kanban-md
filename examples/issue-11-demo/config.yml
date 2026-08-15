@@ -1,0 +1,27 @@
+version: 11
+board:
+  name: Issue 11 Child Roll-up Demo
+  description: A parent with direct children in varied workflow states
+tasks_dir: tasks
+statuses:
+  - name: backlog
+    show_duration: false
+  - name: todo
+  - name: in-progress
+  - name: review
+  - name: done
+    show_duration: false
+  - name: archived
+    show_duration: false
+priorities:
+  - low
+  - medium
+  - high
+  - critical
+defaults:
+  status: backlog
+  priority: medium
+claim_timeout: 1h
+tui:
+  title_lines: 2
+next_id: 8

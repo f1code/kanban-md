@@ -26,9 +26,22 @@ func TaskCompact(w io.Writer, tasks []*task.Task) {
 
 // TaskDetailCompact renders a single task with detail in compact format.
 func TaskDetailCompact(w io.Writer, t *task.Task) {
+	taskDetailCompact(w, t, board.ChildSummary{})
+}
+
+// TaskDetailCompactWithChildren renders task detail with a child roll-up on
+// the first line. Tasks without children retain the existing compact output.
+func TaskDetailCompactWithChildren(w io.Writer, t *task.Task, children board.ChildSummary) {
+	taskDetailCompact(w, t, children)
+}
+
+func taskDetailCompact(w io.Writer, t *task.Task, children board.ChildSummary) {
 	line := formatTaskLine(t)
 	if t.Estimate != "" {
 		line += " est:" + t.Estimate
+	}
+	if children.Total() > 0 {
+		line += fmt.Sprintf(" children:%d/%d done", children.Done, children.Total())
 	}
 	fmt.Fprintln(w, line)
 

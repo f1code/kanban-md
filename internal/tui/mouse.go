@@ -509,9 +509,9 @@ func (b *Board) clampDetailScroll() {
 	}
 	viewHeight := b.height - detailChrome
 	if viewHeight < 1 {
-		viewHeight = len(detailLines(b.detailTask, b.width))
+		viewHeight = len(b.detailLines(b.detailTask))
 	}
-	maxOff := len(detailLines(b.detailTask, b.width)) - viewHeight
+	maxOff := len(b.detailLines(b.detailTask)) - viewHeight
 	if maxOff < 0 {
 		maxOff = 0
 	}

@@ -73,15 +73,16 @@ const (
 
 // Board is the top-level bubbletea model.
 type Board struct {
-	cfg       *config.Config
-	tasks     []*task.Task
-	columns   []column
-	activeCol int
-	activeRow int
-	view      view
-	width     int
-	height    int
-	err       error
+	cfg             *config.Config
+	tasks           []*task.Task
+	unfilteredTasks []*task.Task // active tasks before the board search filter is applied
+	columns         []column
+	activeCol       int
+	activeRow       int
+	view            view
+	width           int
+	height          int
+	err             error
 	// hideEmptyColumns controls whether status columns with zero visible tasks
 	// are removed from the board view.
 	hideEmptyColumns bool
@@ -938,13 +939,18 @@ func (b *Board) loadTasks() {
 	}
 	b.err = nil
 
-	// Filter out archived tasks and (when active) tasks not matching the
-	// search query from the TUI display.
-	var visibleTasks []*task.Task
+	// Keep an unfiltered active-task collection for relationship context in
+	// detail views. The visible collection additionally applies board search.
+	var activeTasks []*task.Task
 	for _, t := range tasks {
-		if b.cfg.IsArchivedStatus(t.Status) {
-			continue
+		if !b.cfg.IsArchivedStatus(t.Status) {
+			activeTasks = append(activeTasks, t)
 		}
+	}
+	b.unfilteredTasks = activeTasks
+
+	var visibleTasks []*task.Task
+	for _, t := range activeTasks {
 		if !matchesFilter(t, b.filterQuery) {
 			continue
 		}
@@ -1001,7 +1007,7 @@ func (b *Board) refreshDetailTask() {
 		return
 	}
 	id := b.detailTask.ID
-	for _, t := range b.tasks {
+	for _, t := range b.unfilteredTasks {
 		if t.ID == id {
 			b.detailTask = t
 			return
@@ -2186,7 +2192,7 @@ func (b *Board) viewDetail() string {
 		return "No task selected."
 	}
 
-	lines := detailLines(t, b.width)
+	lines := b.detailLines(t)
 
 	// Reserve space for the blank separator line and the fixed status hint.
 	viewHeight := b.height - 2 //nolint:mnd // 2 = blank line + hint line
@@ -2236,7 +2242,12 @@ func (b *Board) viewDetail() string {
 	return visible + "\n\n" + dimStyle.Render(truncate(hint, b.width))
 }
 
-func detailLines(t *task.Task, width int) []string {
+func (b *Board) detailLines(t *task.Task) []string {
+	children := board.SummarizeChildren(b.unfilteredTasks, t.ID, b.cfg, false)
+	return detailLinesWithChildren(t, children, b.width)
+}
+
+func detailLinesWithChildren(t *task.Task, children board.ChildSummary, width int) []string {
 	var lines []string
 	header := fmt.Sprintf("Task #%d: %s", t.ID, t.Title)
 	// Word-wrap the header so long titles fit within the available terminal width.
@@ -2258,6 +2269,15 @@ func detailLines(t *task.Task, width int) []string {
 	if t.Blocked {
 		lines = append(lines, "")
 		lines = append(lines, errorStyle.Render("BLOCKED: "+t.BlockReason))
+	}
+	if children.Total() > 0 {
+		lines = append(lines, "")
+		heading := fmt.Sprintf("Children (%d/%d done)", children.Done, children.Total())
+		lines = append(lines, lipgloss.NewStyle().Bold(true).Render(heading))
+		for _, child := range children.Children {
+			line := fmt.Sprintf("#%d [%s] %s", child.ID, child.Status, child.Title)
+			lines = append(lines, wrapTitle(line, width, noLineLimit)...)
+		}
 	}
 	if t.Body != "" {
 		lines = append(lines, "")

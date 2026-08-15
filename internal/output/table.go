@@ -115,6 +115,15 @@ func TaskTable(w io.Writer, tasks []*task.Task) {
 
 // TaskDetail renders a single task with full detail.
 func TaskDetail(w io.Writer, t *task.Task) {
+	taskDetail(w, t, board.ChildSummary{})
+}
+
+// TaskDetailWithChildren renders a single task and a read-only direct-child roll-up.
+func TaskDetailWithChildren(w io.Writer, t *task.Task, children board.ChildSummary) {
+	taskDetail(w, t, children)
+}
+
+func taskDetail(w io.Writer, t *task.Task, children board.ChildSummary) {
 	titleLine := fmt.Sprintf("Task #%d: %s", t.ID, t.Title)
 	fmt.Fprintln(w, lipgloss.NewStyle().Bold(true).Render(titleLine))
 	fmt.Fprintln(w, strings.Repeat("─", len(titleLine)))
@@ -123,6 +132,9 @@ func TaskDetail(w io.Writer, t *task.Task) {
 	printField(w, "Priority", styledValue(t.Priority, priorityStyles))
 	if t.Class != "" {
 		printField(w, "Class", t.Class)
+	}
+	if t.Parent != nil {
+		printField(w, "Parent", "#"+strconv.Itoa(*t.Parent))
 	}
 	printField(w, "Assignee", stringOrDash(t.Assignee))
 	if len(t.Tags) > 0 {
@@ -155,6 +167,15 @@ func TaskDetail(w io.Writer, t *task.Task) {
 			claimStr += " (since " + t.ClaimedAt.Format("2006-01-02 15:04") + ")"
 		}
 		printField(w, "Claimed by", claimStr)
+	}
+
+	if children.Total() > 0 {
+		fmt.Fprintln(w)
+		heading := fmt.Sprintf("Children (%d/%d done)", children.Done, children.Total())
+		fmt.Fprintln(w, lipgloss.NewStyle().Bold(true).Render(heading))
+		for _, child := range children.Children {
+			fmt.Fprintf(w, "  #%d [%s] %s\n", child.ID, child.Status, child.Title)
+		}
 	}
 
 	if t.Body != "" {
