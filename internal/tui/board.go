@@ -215,9 +215,11 @@ func (b *Board) Init() tea.Cmd {
 func (b *Board) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
+		b.err = nil
 		b.invalidatePointerState()
 		return b.handleKey(msg)
 	case tea.MouseMsg:
+		b.err = nil
 		return b.handleMouse(tea.MouseEvent(msg))
 	case tea.WindowSizeMsg:
 		b.invalidatePointerState()
@@ -2537,7 +2539,7 @@ func (b *Board) viewHelp() string {
 		{"enter", "Show task detail"},
 		{"c", "Create new task in column"},
 		{"e", "Edit selected task (same flow as create)"},
-		{"E", "Open selected task in $VISUAL or $EDITOR"},
+		{"E", "Open selected task in $VISUAL, $EDITOR, or vi"},
 		{"m", "Move task (status picker)"},
 		{"n", "Move task to next status"},
 		{"p", "Move task to previous status"},

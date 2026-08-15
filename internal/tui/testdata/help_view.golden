@@ -10,7 +10,7 @@
 │  enter         Show task detail                                             │
 │  c             Create new task in column                                    │
 │  e             Edit selected task (same flow as create)                     │
-│  E             Open selected task in $VISUAL or $EDITOR                     │
+│  E             Open selected task in $VISUAL, $EDITOR, or vi                │
 │  m             Move task (status picker)                                    │
 │  n             Move task to next status                                     │
 │  p             Move task to previous status                                 │

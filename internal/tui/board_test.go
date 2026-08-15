@@ -438,6 +438,7 @@ func TestBoard_ExternalEditorShortcut(t *testing.T) {
 func TestBoard_ExternalEditorShortcutRequiresEditor(t *testing.T) {
 	t.Setenv("VISUAL", "")
 	t.Setenv("EDITOR", "")
+	t.Setenv("PATH", t.TempDir())
 	b, _ := setupTestBoard(t)
 
 	m, cmd := b.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("E")})
@@ -449,11 +450,47 @@ func TestBoard_ExternalEditorShortcutRequiresEditor(t *testing.T) {
 	}
 }
 
+func TestBoard_ExternalEditorErrorClearsOnNextKeyAction(t *testing.T) {
+	t.Setenv("VISUAL", "")
+	t.Setenv("EDITOR", "")
+	t.Setenv("PATH", t.TempDir())
+	b, _ := setupTestBoard(t)
+
+	b = sendKey(b, "E")
+	if !containsStr(b.View(), "$VISUAL or $EDITOR") {
+		t.Fatal("expected missing editor error before the next action")
+	}
+
+	b = sendKey(b, "j")
+	if containsStr(b.View(), "$VISUAL or $EDITOR") {
+		t.Fatal("expected the next key action to clear the editor error")
+	}
+}
+
+func TestBoard_ExternalEditorErrorClearsOnNextMouseAction(t *testing.T) {
+	t.Setenv("VISUAL", "")
+	t.Setenv("EDITOR", "")
+	t.Setenv("PATH", t.TempDir())
+	b, _ := setupTestBoard(t)
+	b.SetMouseEnabled(true)
+
+	b = sendKey(b, "E")
+	if !containsStr(b.View(), "$VISUAL or $EDITOR") {
+		t.Fatal("expected missing editor error before the next action")
+	}
+
+	m, _ := b.Update(tea.MouseMsg{X: 0, Y: 0, Button: tea.MouseButtonLeft, Action: tea.MouseActionPress})
+	b = m.(*tui.Board)
+	if containsStr(b.View(), "$VISUAL or $EDITOR") {
+		t.Fatal("expected the next mouse action to clear the editor error")
+	}
+}
+
 func TestBoard_HelpShowsExternalEditorShortcut(t *testing.T) {
 	b, _ := setupTestBoard(t)
 
 	b = sendKey(b, "?")
-	if !containsStr(b.View(), "Open selected task in $VISUAL or $EDITOR") {
+	if !containsStr(b.View(), "Open selected task in $VISUAL, $EDITOR, or vi") {
 		t.Fatal("expected help view to describe the external editor shortcut")
 	}
 }

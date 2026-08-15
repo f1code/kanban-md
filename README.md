@@ -595,7 +595,7 @@ terminal-dependent; use the terminal's normal selection shortcut or omit
 | `Enter` | View task details |
 | `c` | Create task in current column |
 | `e` | Edit selected task (same 4-step flow as create) |
-| `E` | Open the selected task's Markdown file in `$VISUAL`, falling back to `$EDITOR` |
+| `E` | Open the selected task's Markdown file in `$VISUAL`, then `$EDITOR`, then `vi` when available |
 | `m` | Move task to a different status (picker dialog) |
 | `n` / `p` | Move task to next / previous status |
 | `d` | Delete task (with confirmation) |

@@ -14,7 +14,7 @@ The requester wants to jump from the TUI directly into their terminal editor wit
 
 - Keep lowercase `e` unchanged for kanban-md's built-in four-step edit flow.
 - Add uppercase `E` on the board view to open the selected task file.
-- Resolve the editor from `$VISUAL`, falling back to `$EDITOR` when `$VISUAL` is empty or unset.
+- Resolve the editor from `$VISUAL`, falling back to `$EDITOR` and then to `vi` on `PATH` when the environment variables are empty or unset.
 - Use Bubble Tea's external-process support so the TUI releases the terminal before the editor starts and restores it after the editor exits.
 - Reload the task files and restore selection to the edited task after the external process completes.
 - Show missing-editor and launch errors in the existing TUI error line.
@@ -23,3 +23,7 @@ The requester wants to jump from the TUI directly into their terminal editor wit
 ## Scope
 
 No configuration schema change is needed. The environment variables provide the requested configuration, so config migration and backward-compatibility fixtures are unaffected.
+
+## Follow-up
+
+On 2026-08-15, the fallback was extended to use `vi` when neither environment variable is set and `vi` is available on `PATH`. External-editor errors were also made transient: the next keyboard or mouse action dismisses the error line.

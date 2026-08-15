@@ -46,7 +46,11 @@ func externalEditorCommand(taskPath string) (*exec.Cmd, error) {
 		editor = strings.TrimSpace(os.Getenv("EDITOR"))
 	}
 	if editor == "" {
-		return nil, errors.New("set $VISUAL or $EDITOR to open tasks externally")
+		var err error
+		editor, err = exec.LookPath("vi")
+		if err != nil {
+			return nil, errors.New("set $VISUAL or $EDITOR, or install vi to open tasks externally")
+		}
 	}
 
 	return exec.Command(editor, taskPath), nil //nolint:gosec,noctx // editor is an intentional user-configured interactive command
