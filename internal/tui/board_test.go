@@ -1271,7 +1271,11 @@ func TestBoard_DetailShowsDirectActiveChildrenAndRollup(t *testing.T) {
 	b = sendKey(b, "enter")
 	v := b.View()
 
-	for _, want := range []string{"Children (1/2 done)", "#2 [backlog] Backlog child", "#3 [done] Done child"} {
+	for _, want := range []string{
+		"Children (1/2 done)",
+		"├─ #2 [backlog] Backlog child",
+		"└─ #3 [done] Done child",
+	} {
 		if !containsStr(v, want) {
 			t.Errorf("detail view missing %q:\n%s", want, v)
 		}

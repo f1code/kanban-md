@@ -2274,8 +2274,12 @@ func detailLinesWithChildren(t *task.Task, children board.ChildSummary, width in
 		lines = append(lines, "")
 		heading := fmt.Sprintf("Children (%d/%d done)", children.Done, children.Total())
 		lines = append(lines, lipgloss.NewStyle().Bold(true).Render(heading))
-		for _, child := range children.Children {
-			line := fmt.Sprintf("#%d [%s] %s", child.ID, child.Status, child.Title)
+		for i, child := range children.Children {
+			branch := "├─"
+			if i == len(children.Children)-1 {
+				branch = "└─"
+			}
+			line := fmt.Sprintf("%s #%d [%s] %s", branch, child.ID, child.Status, child.Title)
 			lines = append(lines, wrapTitle(line, width, noLineLimit)...)
 		}
 	}
