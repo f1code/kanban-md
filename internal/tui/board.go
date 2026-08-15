@@ -15,6 +15,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
+	glamourstyles "github.com/charmbracelet/glamour/styles"
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/antopolskiy/kanban-md/internal/board"
@@ -2280,11 +2281,20 @@ const nonBreakingHyphen = "\u2011"
 // Intra-word hyphens are temporarily replaced with non-breaking hyphens to
 // prevent glamour's word wrapper from creating short orphan line fragments.
 func renderMarkdown(body string, width int) string {
+	return renderMarkdownForBackground(body, width, lipgloss.HasDarkBackground())
+}
+
+func renderMarkdownForBackground(body string, width int, darkBackground bool) string {
 	// Pre-process: protect intra-word hyphens from line breaking.
 	body = intraWordHyphen.ReplaceAllString(body, "${1}"+nonBreakingHyphen+"${2}")
 
+	style := glamourstyles.LightStyle
+	if darkBackground {
+		style = glamourstyles.DarkStyle
+	}
+
 	r, err := glamour.NewTermRenderer(
-		glamour.WithStandardStyle("dark"),
+		glamour.WithStandardStyle(style),
 		glamour.WithWordWrap(width),
 		glamour.WithPreservedNewLines(),
 	)

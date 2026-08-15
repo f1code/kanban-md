@@ -524,6 +524,10 @@ Set `tui.hide_empty_columns` in `config.yml` to control the default behavior.
 
 In create/edit dialogs, text fields support cursor-based editing (`←/→`, `Home/End`, `Backspace`, `Delete`).
 
+Task bodies are rendered as Markdown using a palette that adapts to the
+terminal background, keeping the main text readable on both light and dark
+themes.
+
 ### Narrow mode (small terminals)
 
 On terminals too narrow to show every column side by side — a phone over SSH, a
