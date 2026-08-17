@@ -52,8 +52,9 @@ func runShow(cmd *cobra.Command, args []string) error {
 	printWarnings(warnings)
 
 	includeArchived, _ := cmd.Flags().GetBool("archived")
+	parent := board.FindParent(allTasks, t)
 	children := board.SummarizeChildren(allTasks, t.ID, cfg, includeArchived)
-	return outputShownTaskDetail(t, children)
+	return outputShownTaskDetail(t, parent, children)
 }
 
 type shownTaskDetail struct {
@@ -61,7 +62,7 @@ type shownTaskDetail struct {
 	Children []board.ChildTask `json:"children"`
 }
 
-func outputShownTaskDetail(t *task.Task, children board.ChildSummary) error {
+func outputShownTaskDetail(t *task.Task, parent *board.ParentTask, children board.ChildSummary) error {
 	format := outputFormat()
 	if format == output.FormatJSON {
 		return output.JSON(os.Stdout, shownTaskDetail{Task: t, Children: children.Children})
@@ -71,7 +72,7 @@ func outputShownTaskDetail(t *task.Task, children board.ChildSummary) error {
 		return nil
 	}
 
-	output.TaskDetailWithChildren(os.Stdout, t, children)
+	output.TaskDetailWithRelations(os.Stdout, t, parent, children)
 	return nil
 }
 

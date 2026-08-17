@@ -56,3 +56,31 @@ func TestSummarizeChildrenReturnsStableEmptySlice(t *testing.T) {
 		t.Fatalf("roll-up = %d/%d done, want 0/0", summary.Done, summary.Total())
 	}
 }
+
+func TestFindParentResolvesArchivedParent(t *testing.T) {
+	parentID := 4
+	current := &task.Task{ID: 6, Parent: &parentID}
+	tasks := []*task.Task{
+		{ID: 1, Title: "Unrelated", Status: "todo"},
+		{ID: 4, Title: "Archived parent", Status: config.ArchivedStatus},
+	}
+
+	parent := FindParent(tasks, current)
+	if parent == nil {
+		t.Fatal("FindParent() = nil, want archived parent")
+	}
+	if parent.ID != 4 || parent.Title != "Archived parent" || parent.Status != config.ArchivedStatus {
+		t.Fatalf("FindParent() = %#v", parent)
+	}
+}
+
+func TestFindParentMissingOrSelfReference(t *testing.T) {
+	missingID := 99
+	if parent := FindParent(nil, &task.Task{ID: 1, Parent: &missingID}); parent != nil {
+		t.Fatalf("missing parent = %#v, want nil", parent)
+	}
+	selfID := 1
+	if parent := FindParent([]*task.Task{{ID: 1}}, &task.Task{ID: 1, Parent: &selfID}); parent != nil {
+		t.Fatalf("self parent = %#v, want nil", parent)
+	}
+}

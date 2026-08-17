@@ -74,6 +74,7 @@ const (
 // Board is the top-level bubbletea model.
 type Board struct {
 	cfg             *config.Config
+	allTasks        []*task.Task // includes archived tasks for explicit relationship context
 	tasks           []*task.Task
 	unfilteredTasks []*task.Task // active tasks before the board search filter is applied
 	columns         []column
@@ -938,6 +939,7 @@ func (b *Board) loadTasks() {
 		return
 	}
 	b.err = nil
+	b.allTasks = tasks
 
 	// Keep an unfiltered active-task collection for relationship context in
 	// detail views. The visible collection additionally applies board search.
@@ -2243,11 +2245,17 @@ func (b *Board) viewDetail() string {
 }
 
 func (b *Board) detailLines(t *task.Task) []string {
+	parent := board.FindParent(b.allTasks, t)
 	children := board.SummarizeChildren(b.unfilteredTasks, t.ID, b.cfg, false)
-	return detailLinesWithChildren(t, children, b.width)
+	return detailLinesWithRelations(t, parent, children, b.width)
 }
 
-func detailLinesWithChildren(t *task.Task, children board.ChildSummary, width int) []string {
+func detailLinesWithRelations(
+	t *task.Task,
+	parent *board.ParentTask,
+	children board.ChildSummary,
+	width int,
+) []string {
 	var lines []string
 	header := fmt.Sprintf("Task #%d: %s", t.ID, t.Title)
 	// Word-wrap the header so long titles fit within the available terminal width.
@@ -2269,6 +2277,10 @@ func detailLinesWithChildren(t *task.Task, children board.ChildSummary, width in
 	if t.Blocked {
 		lines = append(lines, "")
 		lines = append(lines, errorStyle.Render("BLOCKED: "+t.BlockReason))
+	}
+	if t.Parent != nil {
+		lines = append(lines, "")
+		lines = append(lines, wrapTitle(parentRelationLine(*t.Parent, parent), width, noLineLimit)...)
 	}
 	if children.Total() > 0 {
 		lines = append(lines, "")
@@ -2361,9 +2373,6 @@ func detailMetadataLines(t *task.Task) []string {
 	if len(t.Tags) > 0 {
 		lines = append(lines, detailLabelStyle.Render("Tags:")+"  "+strings.Join(t.Tags, ", "))
 	}
-	if t.Parent != nil {
-		lines = append(lines, detailLabelStyle.Render("Parent:")+"  #"+strconv.Itoa(*t.Parent))
-	}
 	if len(t.DependsOn) > 0 {
 		deps := make([]string, len(t.DependsOn))
 		for i, d := range t.DependsOn {
@@ -2378,6 +2387,13 @@ func detailMetadataLines(t *task.Task) []string {
 		lines = append(lines, detailLabelStyle.Render("Estimate:")+"  "+t.Estimate)
 	}
 	return lines
+}
+
+func parentRelationLine(parentID int, parent *board.ParentTask) string {
+	if parent == nil {
+		return fmt.Sprintf("↑ Parent  #%d", parentID)
+	}
+	return fmt.Sprintf("↑ Parent  #%d [%s] %s", parent.ID, parent.Status, parent.Title)
 }
 
 // detailTimestampLines renders timestamps and claim info.

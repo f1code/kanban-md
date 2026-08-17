@@ -376,10 +376,11 @@ func TestTaskDetailCompleted(t *testing.T) {
 	}
 }
 
-func TestTaskDetailWithChildren(t *testing.T) {
+func TestTaskDetailWithRelations(t *testing.T) {
 	disableColorForTest(t)
 	parentID := 9
 	tk := &task.Task{ID: 1, Title: "Parent", Status: "in-progress", Priority: "high", Parent: &parentID}
+	parent := &board.ParentTask{ID: 9, Title: "Parent task", Status: "backlog"}
 	children := board.ChildSummary{
 		Children: []board.ChildTask{
 			{ID: 2, Title: "Active child", Status: "todo"},
@@ -389,10 +390,10 @@ func TestTaskDetailWithChildren(t *testing.T) {
 	}
 
 	var buf strings.Builder
-	TaskDetailWithChildren(&buf, tk, children)
+	TaskDetailWithRelations(&buf, tk, parent, children)
 	out := buf.String()
 	for _, want := range []string{
-		"Parent:      #9",
+		"↑ Parent  #9 [backlog] Parent task",
 		"Children (1/2 done)",
 		"├─ #2 [todo] Active child",
 		"└─ #3 [done] Done child",
@@ -400,6 +401,22 @@ func TestTaskDetailWithChildren(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("task detail missing %q:\n%s", want, out)
 		}
+	}
+}
+
+func TestTaskDetailFallsBackToStoredParentID(t *testing.T) {
+	disableColorForTest(t)
+	parentID := 99
+	tk := &task.Task{ID: 1, Title: "Orphaned child", Status: "todo", Priority: "medium", Parent: &parentID}
+
+	var buf strings.Builder
+	TaskDetail(&buf, tk)
+	out := buf.String()
+	if !strings.Contains(out, "↑ Parent  #99") {
+		t.Errorf("task detail missing parent ID fallback:\n%s", out)
+	}
+	if strings.Contains(out, "Parent:") {
+		t.Errorf("task detail should replace the old parent metadata field:\n%s", out)
 	}
 }
 

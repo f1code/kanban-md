@@ -14,6 +14,13 @@ type ChildTask struct {
 	Status string `json:"status"`
 }
 
+// ParentTask is the resolved, read-only parent representation used by task-detail views.
+type ParentTask struct {
+	ID     int
+	Title  string
+	Status string
+}
+
 // ChildSummary contains direct children and their terminal-status roll-up.
 type ChildSummary struct {
 	Children []ChildTask
@@ -23,6 +30,21 @@ type ChildSummary struct {
 // Total returns the number of direct children in the summary.
 func (s ChildSummary) Total() int {
 	return len(s.Children)
+}
+
+// FindParent resolves a task's direct parent, including an archived parent.
+// Missing and defensive self-references return nil so renderers can fall back
+// to the parent ID stored on the task.
+func FindParent(tasks []*task.Task, current *task.Task) *ParentTask {
+	if current.Parent == nil || *current.Parent == current.ID {
+		return nil
+	}
+	for _, candidate := range tasks {
+		if candidate.ID == *current.Parent {
+			return &ParentTask{ID: candidate.ID, Title: candidate.Title, Status: candidate.Status}
+		}
+	}
+	return nil
 }
 
 // SummarizeChildren returns direct children in ascending task-ID order.

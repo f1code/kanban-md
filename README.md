@@ -289,6 +289,9 @@ kanban-md show ID --archived  # include archived children in the roll-up
 Children are ordered by task ID, matching the default `list --parent` order.
 Human-readable CLI and TUI detail views prefix them with `├─` and `└─` tree
 guides so the parent-child relationship remains visually clear.
+Tasks with a direct parent show an upward relation such as
+`↑ Parent  #1 [in-progress] Parent title`; if the parent file is unavailable,
+the relationship falls back to its stored task ID.
 JSON output always contains a `children` array; compact output adds a
 `children:DONE/TOTAL done` annotation only when children are present.
 

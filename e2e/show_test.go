@@ -126,8 +126,11 @@ func TestShowChildrenTableAndCompact(t *testing.T) {
 		t.Errorf("default show should hide archived children:\n%s", table.stdout)
 	}
 	childTable := runKanban(t, kanbanDir, "show", "2")
-	if !strings.Contains(childTable.stdout, "Parent:") || !strings.Contains(childTable.stdout, "#1") {
+	if !strings.Contains(childTable.stdout, "↑ Parent  #1 [backlog] Parent epic") {
 		t.Errorf("child detail should show its parent:\n%s", childTable.stdout)
+	}
+	if strings.Contains(childTable.stdout, "Parent:") {
+		t.Errorf("child detail should replace the old parent metadata field:\n%s", childTable.stdout)
 	}
 
 	compact := runKanban(t, kanbanDir, "show", "1", "--compact")

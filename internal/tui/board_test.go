@@ -1210,7 +1210,7 @@ func TestBoard_DetailShowsAllMetadata(t *testing.T) {
 		{"Due", "2026-03-15"},
 		{"Estimate", "2h"},
 		{"Class", "expedite"},
-		{"Parent", "#42"},
+		{"Parent", "↑ Parent  #42"},
 		{"DependsOn", "#10"},
 		{"DependsOn2", "#20"},
 		{"ClaimedBy", "agent-1"},
@@ -1225,6 +1225,9 @@ func TestBoard_DetailShowsAllMetadata(t *testing.T) {
 		if !containsStr(v, c.want) {
 			t.Errorf("expected %s field with %q in detail view", c.label, c.want)
 		}
+	}
+	if containsStr(v, "Parent:") {
+		t.Errorf("detail view should replace the old parent metadata field:\n%s", v)
 	}
 }
 
@@ -1246,12 +1249,14 @@ func setupParentChildrenBoard(t *testing.T) *tui.Board {
 
 	parentID := 1
 	childID := 2
+	archivedParentID := 4
 	tasks := []*task.Task{
 		{ID: 1, Title: "Epic Alpha", Status: "backlog", Priority: "critical", Updated: testRefTime},
 		{ID: 3, Title: "Done child", Status: "done", Priority: "medium", Parent: &parentID, Updated: testRefTime},
 		{ID: 2, Title: "Backlog child", Status: "backlog", Priority: "low", Parent: &parentID, Updated: testRefTime},
 		{ID: 4, Title: "Archived child", Status: "archived", Priority: "medium", Parent: &parentID, Updated: testRefTime},
 		{ID: 5, Title: "Grandchild", Status: "todo", Priority: "medium", Parent: &childID, Updated: testRefTime},
+		{ID: 6, Title: "Child of archived parent", Status: "todo", Priority: "medium", Parent: &archivedParentID, Updated: testRefTime},
 	}
 	for _, tk := range tasks {
 		path := filepath.Join(tasksDir, task.GenerateFilename(tk.ID, tk.Title))
@@ -1264,6 +1269,36 @@ func setupParentChildrenBoard(t *testing.T) *tui.Board {
 	b.SetNow(testNow)
 	b.Update(tea.WindowSizeMsg{Width: 120, Height: 40})
 	return b
+}
+
+func TestBoard_DetailShowsResolvedParentAsUpwardRelation(t *testing.T) {
+	b := setupParentChildrenBoard(t)
+	b = sendKey(b, "j") // select task #2 beneath its parent in backlog
+	b = sendSpecialKey(b, tea.KeyEnter)
+	v := b.View()
+
+	if !containsStr(v, "↑ Parent  #1 [backlog] Epic Alpha") {
+		t.Errorf("detail view missing resolved parent relation:\n%s", v)
+	}
+	if containsStr(v, "Parent:") {
+		t.Errorf("detail view should replace the old parent metadata field:\n%s", v)
+	}
+}
+
+func TestBoard_DetailCanResolveArchivedParent(t *testing.T) {
+	b := setupParentChildrenBoard(t)
+	b = sendKey(b, "/")
+	for _, r := range "Child of archived parent" {
+		b = sendKey(b, string(r))
+	}
+	b = sendSpecialKey(b, tea.KeyEnter)
+	b = sendKey(b, "l") // move from the now-empty backlog column to todo
+	b = sendSpecialKey(b, tea.KeyEnter)
+	v := b.View()
+
+	if !containsStr(v, "↑ Parent  #4 [archived] Archived child") {
+		t.Errorf("detail view should resolve an archived parent:\n%s", v)
+	}
 }
 
 func TestBoard_DetailShowsDirectActiveChildrenAndRollup(t *testing.T) {
