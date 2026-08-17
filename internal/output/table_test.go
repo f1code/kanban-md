@@ -391,7 +391,12 @@ func TestTaskDetailWithChildren(t *testing.T) {
 	var buf strings.Builder
 	TaskDetailWithChildren(&buf, tk, children)
 	out := buf.String()
-	for _, want := range []string{"Parent:      #9", "Children (1/2 done)", "#2 [todo] Active child", "#3 [done] Done child"} {
+	for _, want := range []string{
+		"Parent:      #9",
+		"Children (1/2 done)",
+		"├─ #2 [todo] Active child",
+		"└─ #3 [done] Done child",
+	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("task detail missing %q:\n%s", want, out)
 		}

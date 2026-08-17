@@ -113,7 +113,11 @@ func TestShowChildrenTableAndCompact(t *testing.T) {
 	if table.exitCode != 0 {
 		t.Fatalf("show failed: %s", table.stderr)
 	}
-	for _, want := range []string{"Children (1/2 done)", "#2", "Backlog child", "#3", "Done child"} {
+	for _, want := range []string{
+		"Children (1/2 done)",
+		"├─ #2 [backlog] Backlog child",
+		"└─ #3 [done] Done child",
+	} {
 		if !strings.Contains(table.stdout, want) {
 			t.Errorf("table output missing %q:\n%s", want, table.stdout)
 		}
@@ -166,7 +170,7 @@ func TestShowChildrenArchived(t *testing.T) {
 		t.Fatalf("show --archived failed: %s", withArchived.stderr)
 	}
 	if !strings.Contains(withArchived.stdout, "Children (2/3 done)") ||
-		!strings.Contains(withArchived.stdout, "Archived child") {
+		!strings.Contains(withArchived.stdout, "└─ #4 [archived] Archived child") {
 		t.Errorf("show --archived should include archived child:\n%s", withArchived.stdout)
 	}
 }

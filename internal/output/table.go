@@ -173,8 +173,12 @@ func taskDetail(w io.Writer, t *task.Task, children board.ChildSummary) {
 		fmt.Fprintln(w)
 		heading := fmt.Sprintf("Children (%d/%d done)", children.Done, children.Total())
 		fmt.Fprintln(w, lipgloss.NewStyle().Bold(true).Render(heading))
-		for _, child := range children.Children {
-			fmt.Fprintf(w, "  #%d [%s] %s\n", child.ID, child.Status, child.Title)
+		for i, child := range children.Children {
+			branch := "├─"
+			if i == len(children.Children)-1 {
+				branch = "└─"
+			}
+			fmt.Fprintf(w, "%s #%d [%s] %s\n", branch, child.ID, child.Status, child.Title)
 		}
 	}
 
