@@ -2324,13 +2324,18 @@ func renderMarkdownForBackground(body string, width int, darkBackground bool) st
 	// Pre-process: protect intra-word hyphens from line breaking.
 	body = intraWordHyphen.ReplaceAllString(body, "${1}"+nonBreakingHyphen+"${2}")
 
-	style := glamourstyles.LightStyle
+	style := glamourstyles.LightStyleConfig
 	if darkBackground {
-		style = glamourstyles.DarkStyle
+		style = glamourstyles.DarkStyleConfig
 	}
+	// Keep the document foreground tied to the terminal default instead of
+	// baking in the palette's light or dark body color. Terminals update their
+	// default foreground when their theme changes, so an already-running TUI
+	// stays readable even though Lip Gloss caches its background detection.
+	style.Document.Color = nil
 
 	r, err := glamour.NewTermRenderer(
-		glamour.WithStandardStyle(style),
+		glamour.WithStyles(style),
 		glamour.WithWordWrap(width),
 		glamour.WithPreservedNewLines(),
 	)

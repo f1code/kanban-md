@@ -548,9 +548,9 @@ Opening a task with direct children shows the same child list and roll-up as
 which cards are visible, but does not hide children from the selected parent's
 detail view.
 
-Task bodies are rendered as Markdown using a palette that adapts to the
-terminal background, keeping the main text readable on both light and dark
-themes.
+Task bodies are rendered as Markdown using the terminal's default foreground
+for the main text, so they remain readable when a terminal switches between
+light and dark themes while the TUI is running.
 
 ### Narrow mode (small terminals)
 
